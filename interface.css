@@ -1,0 +1,393 @@
+/* Página */
+.stApp {
+    background: #1c1818;
+    color: #e0e0e0;
+}
+
+.block-container {
+    max-width: 1180px;
+    padding-top: 10px;
+    padding-bottom: 24px;
+}
+
+/* Moldura azul externa */
+[data-testid="stMainBlockContainer"] {
+    border: 2px solid #2f8dd1;
+    margin: 10px auto;
+    min-height: calc(100vh - 20px);
+    padding: 28px 40px;
+}
+
+/* Fonte geral */
+html,
+body,
+[class*="css"] {
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    color: #e9e5e5;
+}
+
+header[data-testid="stHeader"] {
+    background: transparent;
+}
+
+#MainMenu,
+footer {
+    visibility: hidden;
+}
+
+/* Títulos da página inicial */
+.main-title {
+    margin: 10px 0 12px;
+    font-size: clamp(36px, 4vw, 58px);
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.center-title,
+.center-text {
+    text-align: center;
+}
+
+.hint {
+    margin: 0 0 18px;
+    font-size: 17px;
+    color: #ded8d8;
+}
+
+/* Upload */
+[data-testid="stFileUploader"] {
+    margin-top: 2px;
+}
+
+[data-testid="stFileUploaderDropzone"] {
+    min-height: 260px;
+    padding: 34px;
+    border: 2px solid #c8c3c3;
+    border-radius: 34px;
+    background: #1c1818;
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+[data-testid="stFileUploaderDropzone"]:hover {
+    border-color: #2f8dd1;
+    background: #211d1d;
+    transform: translateY(-1px);
+}
+
+[data-testid="stFileUploaderDropzoneInstructions"] {
+    text-align: center;
+}
+
+[data-testid="stFileUploaderDropzoneInstructions"] span {
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    color: #e8e3e3;
+    font-size: 27px;
+}
+
+[data-testid="stFileUploaderDropzoneInstructions"] small {
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    color: #ddd7d7;
+    font-size: 14px;
+}
+
+[data-testid="stFileUploaderDropzone"] button {
+    border: 1px solid #d5d0d0;
+    border-radius: 9px;
+    background: transparent;
+    color: #f1eded;
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+}
+
+[data-testid="stFileUploaderFile"] {
+    border: 1px solid #4b4646;
+    border-radius: 12px;
+    background: #211d1d;
+}
+
+/* Botões */
+.stButton > button,
+.stDownloadButton > button {
+    border: 1px solid #2f8dd1;
+    border-radius: 10px;
+    background: #2f8dd1;
+    color: white;
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    font-size: 17px;
+    padding: 8px 24px;
+}
+
+.stButton > button:hover,
+.stDownloadButton > button:hover {
+    border-color: #61b5ed;
+    background: #237fc0;
+    color: white;
+}
+
+.stButton > button:disabled {
+    border-color: #4f4b4b;
+    background: #343030;
+    color: #888282;
+}
+
+/* Página de transcrição */
+.transcribing-title {
+    margin: 20px 0 12px;
+    text-align: center;
+    font-size: clamp(40px, 4vw, 58px);
+    font-weight: 500;
+    line-height: 1.1;
+}
+
+.transcribing-subtitle {
+    margin: 0 0 18px;
+    text-align: center;
+    color: white;
+    font-size: 21px;
+}
+
+/* Terminal */
+.terminal-content {
+    height: 250px;
+    margin: 12px 10px 56px;
+    padding: 24px 28px;
+    overflow-y: auto;
+    border: 2px solid #c8c3c3;
+    border-radius: 34px;
+    background: #1c1818;
+    color: #e6e1e1;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    scroll-behavior: smooth;
+}
+
+/* Barra do terminal */
+.terminal-content::-webkit-scrollbar {
+    width: 9px;
+}
+
+.terminal-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.terminal-content::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: #4d4949;
+}
+
+/* Conclusão */
+.completion-text {
+    margin: 0;
+    text-align: center;
+    color: #e8e3e3;
+    font-size: 21px;
+}
+
+/*
+O botão Click Here fica visualmente como texto,
+sem fundo azul.
+*/
+div[data-testid="stButton"]:has(
+    button[kind="secondary"]
+) {
+    display: flex;
+    justify-content: center;
+}
+
+div[data-testid="stButton"] button {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Mobile */
+@media (max-width: 720px) {
+    [data-testid="stMainBlockContainer"] {
+        margin: 5px;
+        min-height: calc(100vh - 10px);
+        padding: 24px 18px;
+    }
+
+    [data-testid="stFileUploaderDropzone"] {
+        min-height: 220px;
+        border-radius: 24px;
+        padding: 24px 14px;
+    }
+
+    .terminal-content {
+        height: 300px;
+        margin-left: 0;
+        margin-right: 0;
+        padding: 18px;
+        border-radius: 24px;
+        font-size: 12px;
+    }
+}
+
+/* =========================================================
+   Página de análise da IA
+   ========================================================= */
+
+/* Oculta a navegação automática do Streamlit. */
+[data-testid="stSidebar"],
+[data-testid="collapsedControl"] {
+    display: none;
+}
+
+/* Cabeçalho da página de análise */
+.summary-title {
+    margin: 18px 0 12px;
+    text-align: center;
+    color: #ded8d8;
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    font-size: clamp(42px, 5vw, 62px);
+    font-weight: 500;
+    line-height: 1.1;
+}
+
+.summary-subtitle {
+    margin: 0 0 28px;
+    text-align: center;
+    color: #ded8d8;
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    font-size: clamp(18px, 2vw, 25px);
+}
+
+/* Retângulo que exibe a resposta da IA. */
+.st-key-ai_article_container {
+    height: 450px;
+    overflow-y: auto;
+    padding: 26px 34px;
+    border: 2px solid #c8c3c3;
+    border-radius: 34px;
+    background: #1c1818;
+}
+
+/* Remove uma borda interna adicional criada pelo container. */
+.st-key-ai_article_container > div {
+    border: none !important;
+}
+
+/* Markdown gerado pela IA */
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] {
+    color: #e9e5e5;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 19px;
+    line-height: 1.75;
+}
+
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] h1 {
+    margin: 0 0 26px;
+    color: #f2eeee;
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    font-size: 37px;
+    line-height: 1.2;
+}
+
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] h2 {
+    margin: 42px 0 18px;
+    color: #f2eeee;
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    font-size: 29px;
+    line-height: 1.3;
+}
+
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] h3 {
+    margin: 32px 0 14px;
+    color: #f2eeee;
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    font-size: 23px;
+}
+
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] p {
+    margin-bottom: 22px;
+}
+
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] ul,
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] ol {
+    margin-bottom: 24px;
+    padding-left: 30px;
+}
+
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] li {
+    margin-bottom: 8px;
+}
+
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] blockquote {
+    margin: 30px 0;
+    padding: 8px 0 8px 22px;
+    border-left: 3px solid #2f8dd1;
+    color: #d8d3d3;
+    font-size: 20px;
+    font-style: italic;
+}
+
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] code {
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: #302c2c;
+    color: #f0ecec;
+    font-family: Consolas, "Courier New", monospace;
+}
+
+.st-key-ai_article_container [data-testid="stMarkdownContainer"] pre {
+    padding: 20px;
+    overflow-x: auto;
+    border: 1px solid #494444;
+    border-radius: 10px;
+    background: #151313;
+}
+
+/* Barra de rolagem da resposta */
+.st-key-ai_article_container::-webkit-scrollbar {
+    width: 9px;
+}
+
+.st-key-ai_article_container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.st-key-ai_article_container::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: #555050;
+}
+
+.summary-actions-title {
+    margin: 28px 0 8px;
+    text-align: center;
+    color: #e9e5e5;
+    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    font-size: 21px;
+}
+
+/* Complementa a regra global de botões nesta página. */
+.stDownloadButton > button,
+.stButton > button {
+    min-height: 48px;
+}
+
+@media (max-width: 720px) {
+    .summary-title {
+        margin-top: 8px;
+        font-size: 43px;
+    }
+
+    .summary-subtitle {
+        font-size: 19px;
+    }
+
+    .st-key-ai_article_container {
+        height: 500px;
+        padding: 20px;
+        border-radius: 24px;
+    }
+
+    .st-key-ai_article_container [data-testid="stMarkdownContainer"] {
+        font-size: 17px;
+    }
+}
