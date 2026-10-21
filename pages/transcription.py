@@ -1,9 +1,14 @@
 import html
+import logging
 from pathlib import Path
 
 import streamlit as st
 
 from transcription import transcrever_arquivo
+from observability import configure_logging
+
+configure_logging()
+logger = logging.getLogger("glos.UI")
 
 
 st.set_page_config(
@@ -210,8 +215,9 @@ if not st.session_state.transcription_finished:
             unsafe_allow_html=True,
         )
 
+        metrics = {}
         transcription_generator = transcrever_arquivo(
-            video_path
+            video_path, metrics=metrics, display_name=video_name
         )
 
         if transcription_generator is None:
@@ -280,6 +286,7 @@ if not st.session_state.transcription_finished:
         )
 
         st.session_state.transcription_finished = True
+        st.session_state.processing_metrics = metrics
 
         terminal_placeholder.markdown(
             montar_terminal(terminal_lines),
@@ -287,6 +294,7 @@ if not st.session_state.transcription_finished:
         )
 
     except Exception as error:
+        logger.exception("Falha na página de transcrição | Tipo=%s", type(error).__name__)
         error_message = (
             f"Erro durante a transcrição: {error}"
         )

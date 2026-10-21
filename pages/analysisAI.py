@@ -1,8 +1,15 @@
-from collections.abc import Generator
+import logging
 from pathlib import Path
+from time import perf_counter
 
-import ollama
 import streamlit as st
+
+from analysis.config import load_config
+from analysis.pipeline import analyze
+from analysis.ollama_client import AnalysisError
+from analysis.progress import progress_message, progress_value
+from observability import configure_logging, format_time
+from processing_feedback import processing_events
 
 
 st.set_page_config(
@@ -13,7 +20,8 @@ st.set_page_config(
 )
 
 
-OLLAMA_MODEL = "qwen3:8b"
+configure_logging()
+logger = logging.getLogger("glos.UI")
 
 
 def carregar_css() -> None:
@@ -28,87 +36,6 @@ def carregar_css() -> None:
             f"<style>{css}</style>",
             unsafe_allow_html=True,
         )
-
-
-def criar_prompt(transcricao: str) -> str:
-    """
-    Monta o prompt enviado ao modelo local.
-
-    A resposta deve ser Markdown, pois será exibida
-    formatada e disponibilizada para download.
-    """
-
-    return f"""
-Você é um instrutor técnico especializado no conteúdo que a transcrição abaixo abordar.
-
-Sua tarefa é transformar a transcrição bruta abaixo em uma aula escrita
-completa, didática, direta e tecnicamente organizada.
-
-O resultado deve ter qualidade editorial semelhante a um bom artigo técnico
-publicado no Medium.
-
-REGRAS OBRIGATÓRIAS:
-
-1. Escreva em português brasileiro.
-2. Retorne somente o artigo em Markdown.
-3. Crie um título principal usando "#".
-4. Depois do título, escreva uma introdução curta.
-5. Organize o conteúdo usando títulos "##" e subtítulos "###".
-6. Use parágrafos claros e relativamente curtos.
-7. Use listas somente quando realmente ajudarem na compreensão.
-8. Destaque observações importantes usando citações Markdown com ">".
-9. Use negrito para conceitos importantes.
-10. Preserve as informações técnicas da transcrição.
-11. Remova vícios de fala, repetições, interrupções e frases incompletas.
-12. Corrija erros evidentes de transcrição quando o contexto permitir.
-13. Não invente procedimentos, configurações ou conclusões ausentes.
-14. Explique termos técnicos antes de utilizá-los de forma aprofundada.
-15. Quando existir um procedimento, apresente uma sequência lógica.
-16. Termine com uma seção chamada "Conclusão".
-17. Não mencione que o conteúdo veio de uma transcrição.
-18. Não inclua comentários sobre estas instruções.
-
-TRANSCRIÇÃO:
-
-{transcricao}
-""".strip()
-
-
-def gerar_resposta_ollama(
-    prompt: str,
-
-    # Gera a resposta progressivamente por meio do Ollama.
-) -> Generator[str, None, None]:
-
-    stream = ollama.chat(
-        model=OLLAMA_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "Você escreve artigos técnicos completos, "
-                    "precisos e didáticos em Markdown."
-                ),
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ],
-        stream=True,
-        think=False,
-        options={
-            "temperature": 0.3,
-            "top_p": 0.9,
-        },
-    )
-
-    for chunk in stream:
-        message = chunk.get("message", {})
-        content = message.get("content", "")
-
-        if content:
-            yield content
 
 
 def limpar_sessao() -> None:
@@ -127,6 +54,8 @@ def limpar_sessao() -> None:
         "ai_analysis",
         "ai_analysis_finished",
         "ai_analysis_error",
+        "processing_metrics",
+        "source_id",
     )
 
     for key in keys_to_remove:
@@ -134,7 +63,6 @@ def limpar_sessao() -> None:
 
 
 carregar_css()
-
 
 
 # ---------------------------------------------------------
@@ -197,66 +125,78 @@ with article_container:
 # GERAÇÃO DA ANÁLISE
 # ---------------------------------------------------------
 
-if "ai_analysis" not in st.session_state:
-    accumulated_response = ""
+def executar_analise() -> None:
+    started = perf_counter()
+    metrics = dict(st.session_state.get("processing_metrics", {}))
+    metrics.setdefault("filename", st.session_state.get("video_name", "não informado"))
+    progress_bar = st.progress(0.02, text="Preparando análise...")
+    elapsed_placeholder = st.empty()
+    last_second = -1
+    last_render = 0.0
+    draft = ""
+    result = None
+    st.session_state.ai_analysis_finished = False
+    st.session_state.pop("ai_analysis_error", None)
 
     try:
-        prompt = criar_prompt(
-            st.session_state.transcription
-        )
+        config = load_config()
+        text = st.session_state.transcription
+        source_id = st.session_state.get("source_id")
+        # Copia entradas da sessão antes de iniciar o worker. Somente este
+        # escopo, na thread Streamlit, atualiza elementos e session_state.
+        def operation(progress, on_token):
+            return analyze(text, config=config, progress=progress,
+                           on_token=on_token, metrics=metrics, source_id=source_id)
 
-        with st.spinner(
-            "Organizando a transcrição com a IA local..."
-        ):
-            for token in gerar_resposta_ollama(prompt):
-                accumulated_response += token
+        with st.spinner("Processamento local em andamento..."):
+            for kind, value in processing_events(operation):
+                now = perf_counter()
+                second = int(now - started)
+                if second != last_second:
+                    elapsed_placeholder.caption(f"Tempo decorrido: {format_time(second)}")
+                    last_second = second
+                if kind == "progress":
+                    stage, current, total = value
+                    # 100% é publicado junto do resultado validado abaixo.
+                    if stage != "complete":
+                        progress_bar.progress(progress_value(stage, current, total),
+                                              text=progress_message(stage, current, total))
+                elif kind == "token":
+                    draft += value
+                    if now - last_render >= 0.1:
+                        article_placeholder.markdown(draft + " ▌")
+                        last_render = now
+                elif kind == "result":
+                    result = value
 
-                # O cursor dá a sensação de geração em andamento.
-                article_placeholder.markdown(
-                    accumulated_response + " ▌"
-                )
-
-        st.session_state.ai_analysis = (
-            accumulated_response.strip()
-        )
-
+        st.session_state.ai_analysis = result
         st.session_state.ai_analysis_finished = True
-
-        # Retira o cursor ao terminar.
-        article_placeholder.markdown(
-            st.session_state.ai_analysis
+        st.session_state.processing_metrics = metrics
+        article_placeholder.markdown(result)
+        progress_bar.progress(1.0, text="Documento concluído.")
+        elapsed_placeholder.caption(
+            f"Processamento da análise concluído em {format_time(metrics['analysis_seconds'])}"
         )
-
-    except ollama.ResponseError as error:
-        st.session_state.ai_analysis_error = str(error)
-
-        article_placeholder.error(
-            "O Ollama retornou um erro: "
-            f"{error}"
-        )
-
-    except ConnectionError:
-        st.session_state.ai_analysis_error = (
-            "Não foi possível conectar ao Ollama."
-        )
-
-        article_placeholder.error(
-            "Não foi possível conectar ao Ollama. "
-            "Verifique se ele está instalado e em execução."
-        )
-
     except Exception as error:
+        if not isinstance(error, AnalysisError):
+            logger.exception("Falha ao concluir a análise | Tipo=%s", type(error).__name__)
         st.session_state.ai_analysis_error = str(error)
+        st.session_state.pop("ai_analysis", None)
+        st.session_state.processing_metrics = metrics
+        progress_bar.empty()
+        # Substitui qualquer rascunho transmitido. Não salva nem libera download.
+        article_placeholder.error(f"Não foi possível concluir a análise: {error}")
+        if st.button("Tentar novamente", use_container_width=True):
+            st.rerun()
 
-        article_placeholder.error(
-            f"Erro durante a análise: {error}"
-        )
 
+if "ai_analysis" not in st.session_state:
+    executar_analise()
 else:
-    # Reconstrói a resposta após qualquer rerun.
-    article_placeholder.markdown(
-        st.session_state.ai_analysis
-    )
+    article_placeholder.markdown(st.session_state.ai_analysis)
+    st.progress(1.0, text="Documento concluído.")
+    elapsed = st.session_state.get("processing_metrics", {}).get("analysis_seconds", 0)
+    st.caption(f"Processamento da análise concluído em {format_time(elapsed)}")
 
 
 # ---------------------------------------------------------

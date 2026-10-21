@@ -1,7 +1,11 @@
 from pathlib import Path
+import hashlib
 import tempfile
 
 import streamlit as st
+
+from analysis.checkpoints import available_runs, recover_input
+from analysis.errors import AnalysisError
 
 
 st.set_page_config(
@@ -108,7 +112,7 @@ uploaded_file = st.file_uploader(
         "Formatos aceitos: MP4, MOV, AVI, MKV, "
         "WEBM, MPEG, MPG e M4V."
     ),
-    max_upload_size=2048,
+    max_upload_size=10240,
 )
 
 
@@ -135,6 +139,7 @@ if transcribe_button and uploaded_file is not None:
         # Garante que a leitura começará no início.
         uploaded_file.seek(0)
 
+        file_identity = hashlib.sha256()
         with tempfile.NamedTemporaryFile(
             mode="wb",
             delete=False,
@@ -152,6 +157,7 @@ if transcribe_button and uploaded_file is not None:
                     break
 
                 temporary_file.write(chunk)
+                file_identity.update(chunk)
 
             temporary_file.flush()
             temporary_path = Path(temporary_file.name)
@@ -186,6 +192,7 @@ if transcribe_button and uploaded_file is not None:
         )
 
         st.session_state.video_name = video_name
+        st.session_state.source_id = file_identity.hexdigest()
 
         # Limpa o resultado da transcrição anterior.
         for key in (
@@ -194,6 +201,10 @@ if transcribe_button and uploaded_file is not None:
             "transcription_filename",
             "transcription_finished",
             "transcription_error",
+            "ai_analysis",
+            "ai_analysis_finished",
+            "ai_analysis_error",
+            "processing_metrics",
         ):
             st.session_state.pop(key, None)
 
@@ -209,3 +220,29 @@ if transcribe_button and uploaded_file is not None:
         st.error(
             f"Não foi possível preparar o vídeo: {error}"
         )
+
+
+# Recupera a transcrição já salva, sem nova cópia ou nova transcrição do vídeo.
+# A compatibilidade das análises é verificada pelo pipeline ao abrir AI Analysis.
+previous_runs = available_runs()
+if previous_runs:
+    with st.expander("Retomar processamento anterior"):
+        run = st.selectbox(
+            "Execução salva", previous_runs,
+            format_func=lambda item: f"{item['filename']} — {item['updated_at']} — {item['status']}",
+        )
+        if st.button("Recuperar processamento", use_container_width=True):
+            try:
+                saved = recover_input(run["run_id"])
+                for key in ("ai_analysis", "ai_analysis_finished", "ai_analysis_error", "transcription_error", "video_path"):
+                    st.session_state.pop(key, None)
+                st.session_state.transcription = saved["text"]
+                st.session_state.video_name = saved["filename"]
+                st.session_state.source_id = saved["identity"]["source"]
+                st.session_state.transcription_filename = f"{Path(saved['filename']).stem}.txt"
+                st.session_state.transcription_finished = True
+                st.session_state.processing_metrics = saved["metrics"]
+                st.session_state.terminal_lines = ["Transcrição recuperada do checkpoint local."]
+                st.switch_page("pages/transcription.py")
+            except AnalysisError as error:
+                st.error(str(error))
